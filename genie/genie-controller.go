@@ -473,7 +473,7 @@ func deleteNetwork(conf utils.NetConf, intfId int, cniName string, cniArgs utils
 		canalStr, _ := ioutil.ReadFile(CanalConfFile)
 		conf, _  = ParseCNIConf(canalStr)
 		stdinData, _ = json.Marshal(&conf)
-		result, err = ipam.ExecAdd("flannel", stdinData)
+		result, err = ipam.ExecDel("flannel", stdinData)
 		if ipamErr != nil {
 			return ipamErr
 		}
