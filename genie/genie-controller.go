@@ -33,12 +33,19 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"io/ioutil"
 )
 
 const (
 	// MultiIPPreferencesAnnotation is a key used for parsing pod
 	// definitions containing "multi-ip-preferences" annotation
 	MultiIPPreferencesAnnotation = "multi-ip-preferences"
+)
+
+const (
+	CalicoConfFile = "/etc/cni/net.d/10-calico.conf"
+	CanalConfFile = "/etc/cni/net.d/10-canal.conf"
+	WeaveConfFile = "/etc/cni/net.d/10-weave.conf"
 )
 
 // PopulateCNIArgs wraps skel.CmdArgs into Genie's native CNIArgs format.
@@ -378,7 +385,8 @@ func addNetwork(conf utils.NetConf, intfId int, cniName string, cniArgs utils.CN
 		}
 		fmt.Fprintf(os.Stderr, "CNI Genie romana result = %v\n", result)
 	case "weave":
-		conf.Type = "weave-net"
+		weaveStr, _ := ioutil.ReadFile(WeaveConfFile)
+		conf, _  = ParseCNIConf(weaveStr)
 		stdinData, _ = json.Marshal(&conf)
 		result, err = ipam.ExecAdd("weave-net", stdinData)
 		if err != nil {
@@ -387,9 +395,8 @@ func addNetwork(conf utils.NetConf, intfId int, cniName string, cniArgs utils.CN
 		}
 		fmt.Fprintf(os.Stderr, "CNI Genie weave result = %v\n", result)
 	case "calico":
-		conf.Type = "calico"
-		conf.IPAM.Type = "host-local"
-		conf.IPAM.Subnet = "usePodCidr"
+		calicoStr, _ := ioutil.ReadFile(CalicoConfFile)
+		conf, _  = ParseCNIConf(calicoStr)
 		stdinData, _ = json.Marshal(&conf)
 		result, err = ipam.ExecAdd("calico", stdinData)
 		if err != nil {
@@ -397,11 +404,10 @@ func addNetwork(conf utils.NetConf, intfId int, cniName string, cniArgs utils.CN
 		}
 		fmt.Fprintf(os.Stderr, "CNI Genie weave result = %v\n", result)
 	case "canal":
-		conf.Type = "calico"
-		conf.IPAM.Type = "host-local"
-		conf.IPAM.Subnet = "usePodCidr"
+		canalStr, _ := ioutil.ReadFile(CanalConfFile)
+		conf, _  = ParseCNIConf(canalStr)
 		stdinData, _ = json.Marshal(&conf)
-		result, err = ipam.ExecAdd("calico", stdinData)
+		result, err = ipam.ExecAdd("flannel", stdinData)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "CNI Genie err = %v\n", err)
 			return nil, err
@@ -448,27 +454,26 @@ func deleteNetwork(conf utils.NetConf, intfId int, cniName string, cniArgs utils
 			return ipamErr
 		}
 	case "weave":
-		conf.Type = "weave-net"
+		weaveStr, _ := ioutil.ReadFile(WeaveConfFile)
+		conf, _  = ParseCNIConf(weaveStr)
 		stdinData, _ = json.Marshal(&conf)
 		ipamErr := ipam.ExecDel("weave-net", stdinData)
 		if ipamErr != nil {
 			return ipamErr
 		}
 	case "calico":
-		conf.Type = "calico"
-		conf.IPAM.Type = "host-local"
-		conf.IPAM.Subnet = "usePodCidr"
+		calicoStr, _ := ioutil.ReadFile(CalicoConfFile)
+		conf, _  = ParseCNIConf(calicoStr)
 		stdinData, _ = json.Marshal(&conf)
 		ipamErr := ipam.ExecDel("calico", stdinData)
 		if ipamErr != nil {
 			return ipamErr
 		}
 	case "canal":
-		conf.Type = "calico"
-		conf.IPAM.Type = "host-local"
-		conf.IPAM.Subnet = "usePodCidr"
+		canalStr, _ := ioutil.ReadFile(CanalConfFile)
+		conf, _  = ParseCNIConf(canalStr)
 		stdinData, _ = json.Marshal(&conf)
-		ipamErr := ipam.ExecDel("calico", stdinData)
+		result, err = ipam.ExecAdd("flannel", stdinData)
 		if ipamErr != nil {
 			return ipamErr
 		}
